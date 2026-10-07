@@ -1,0 +1,203 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String           @id @default(uuid()) @db.Uuid
+  name           String
+  email          String           @unique
+  password       String
+  role           UserRole         @default(STUDENT)
+  status         UserStatus       @default(APPROVED)
+  phone          String?
+  createdAt      DateTime         @default(now()) @db.Timestamptz(6)
+  courses        Course[]         @relation("InstructorCourses")
+  enrollments    Enrollment[]     @relation("StudentEnrollments")
+  lessonProgress LessonProgress[] @relation("StudentLessonProgress")
+  quizAttempts   QuizAttempt[]    @relation("StudentQuizAttempts")
+  submissions    Submission[]     @relation("StudentSubmissions")
+  reports        Report[]
+}
+
+model Course {
+  id           String       @id @default(uuid()) @db.Uuid
+  title        String
+  description  String
+  category     String
+  thumbnail    String?
+  instructorId String?      @db.Uuid
+  createdAt    DateTime     @default(now()) @db.Timestamptz(6)
+  assignments  Assignment[]
+  instructor   User?        @relation("InstructorCourses", fields: [instructorId], references: [id])
+  enrollments  Enrollment[]
+  lessons      Lesson[]
+  quizzes      Quiz[]
+
+  @@index([instructorId])
+}
+
+model Lesson {
+  id          String           @id @default(uuid()) @db.Uuid
+  title       String
+  content     String
+  materialUrl String?
+  duration    Int?
+  courseId    String           @db.Uuid
+  createdAt   DateTime         @default(now()) @db.Timestamptz(6)
+  course      Course           @relation(fields: [courseId], references: [id])
+  progress    LessonProgress[]
+
+  @@index([courseId])
+}
+
+model Enrollment {
+  id         String           @id @default(uuid()) @db.Uuid
+  studentId  String           @db.Uuid
+  courseId   String           @db.Uuid
+  enrolledAt DateTime         @default(now()) @db.Timestamptz(6)
+  status     EnrollmentStatus @default(ACTIVE)
+  course     Course           @relation(fields: [courseId], references: [id])
+  student    User             @relation("StudentEnrollments", fields: [studentId], references: [id])
+
+  @@unique([studentId, courseId])
+  @@index([courseId])
+}
+
+model Assignment {
+  id          String       @id @default(uuid()) @db.Uuid
+  title       String
+  description String
+  dueDate     DateTime     @db.Timestamptz(6)
+  courseId    String       @db.Uuid
+  createdAt   DateTime     @default(now()) @db.Timestamptz(6)
+  course      Course       @relation(fields: [courseId], references: [id])
+  submissions Submission[]
+
+  @@index([courseId])
+}
+
+model Submission {
+  id           String     @id @default(uuid()) @db.Uuid
+  assignmentId String     @db.Uuid
+  studentId    String     @db.Uuid
+  fileUrl      String?
+  submittedAt  DateTime   @default(now()) @db.Timestamptz(6)
+  marks        Int?
+  feedback     String?
+  assignment   Assignment @relation(fields: [assignmentId], references: [id])
+  student      User       @relation("StudentSubmissions", fields: [studentId], references: [id])
+
+  @@index([assignmentId])
+  @@index([studentId])
+}
+
+model Quiz {
+  id          String         @id @default(uuid()) @db.Uuid
+  title       String
+  description String?
+  totalMarks  Int
+  courseId    String         @db.Uuid
+  createdAt   DateTime       @default(now()) @db.Timestamptz(6)
+  course      Course         @relation(fields: [courseId], references: [id])
+  attempts    QuizAttempt[]
+  questions   QuizQuestion[]
+
+  @@index([courseId])
+}
+
+model QuizQuestion {
+  id            String @id @default(uuid()) @db.Uuid
+  quizId        String @db.Uuid
+  question      String
+  optionA       String
+  optionB       String
+  optionC       String
+  optionD       String
+  correctAnswer String
+  quiz          Quiz   @relation(fields: [quizId], references: [id])
+
+  @@index([quizId])
+}
+
+model QuizAttempt {
+  id          String   @id @default(uuid()) @db.Uuid
+  quizId      String   @db.Uuid
+  studentId   String   @db.Uuid
+  score       Int
+  attemptedAt DateTime @default(now()) @db.Timestamptz(6)
+  quiz        Quiz     @relation(fields: [quizId], references: [id])
+  student     User     @relation("StudentQuizAttempts", fields: [studentId], references: [id])
+
+  @@index([quizId])
+  @@index([studentId])
+}
+
+model LessonProgress {
+  id          String    @id @default(uuid()) @db.Uuid
+  studentId   String    @db.Uuid
+  lessonId    String    @db.Uuid
+  completed   Boolean   @default(false)
+  completedAt DateTime? @db.Timestamptz(6)
+  lesson      Lesson    @relation(fields: [lessonId], references: [id])
+  student     User      @relation("StudentLessonProgress", fields: [studentId], references: [id])
+
+  @@unique([studentId, lessonId])
+  @@index([lessonId])
+}
+
+model Report {
+  id            String         @id @default(uuid()) @db.Uuid
+  userId        String         @db.Uuid
+  category      ReportCategory
+  subject       String         @db.VarChar(160)
+  description   String
+  status        ReportStatus   @default(PENDING)
+  adminResponse String?
+  createdAt     DateTime       @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime       @updatedAt @db.Timestamptz(6)
+  resolvedAt    DateTime?      @db.Timestamptz(6)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+}
+
+enum UserRole {
+  STUDENT
+  INSTRUCTOR
+  ADMIN
+}
+
+enum UserStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  BLOCKED
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  COMPLETED
+}
+
+enum ReportCategory {
+  PAYMENT_ISSUE
+  COURSE_ACCESS_ISSUE
+  ASSIGNMENT_ISSUE
+  QUIZ_ISSUE
+  INSTRUCTOR_ISSUE
+  TECHNICAL_ISSUE
+  OTHER
+}
+
+enum ReportStatus {
+  PENDING
+  IN_PROGRESS
+  RESOLVED
+  REJECTED
+}

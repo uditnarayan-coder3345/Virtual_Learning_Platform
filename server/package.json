@@ -1,0 +1,27 @@
+{
+  "name": "virtual-learning-platform-server",
+  "version": "1.0.0",
+  "description": "Express backend for the Virtual Learning Platform",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "seed:admin": "node seed-admin.js",
+    "seed:initial-admin": "node seed-initial-admin.js",
+    "test:auth-approval": "node .registration-flow-smoke.mjs",
+    "test:requests-reports": "node .requests-reports-smoke.mjs"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.0",
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "jsonwebtoken": "^9.0.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10",
+    "prisma": "^6.19.0"
+  }
+}
